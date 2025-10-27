@@ -1,0 +1,54 @@
+name: Node.js CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8
+        env:
+          MYSQL_ROOT_PASSWORD: Hari@1234
+          MYSQL_DATABASE: Movies_Collection
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Use Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '20'
+
+    - name: Install dependencies
+      run: npm install
+
+    - name: Wait for MySQL to be ready
+      run: |
+        echo "Waiting for MySQL..."
+        for i in {1..15}; do
+          mysqladmin ping -h 127.0.0.1 -P 3306 --silent && break
+          sleep 2
+        done
+
+    - name: Run migrations / sync DB
+      run: node -e "require('./index.js')" # adjust if you have migration script
+
+    - name: Run tests (optional)
+      run: npm test # if you have test scripts
+
+    - name: Start server (optional for CI)
+      run: node index.js
